@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #06080e;
+    color: #f1f5f9;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+}
+
+/* Custom glowing effects */
+.glow-emerald {
+  box-shadow: 0 0 35px -5px rgba(16, 185, 129, 0.35);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 35px -5px rgba(6, 182, 212, 0.35);
+}
+
+.glow-purple {
+  box-shadow: 0 0 35px -5px rgba(168, 85, 247, 0.35);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glass-panel {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-elevated {
+  background: rgba(18, 26, 47, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Animated scanline for QR */
+@keyframes scanline {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 98%;
+    opacity: 0.8;
+  }
+}
+
+.scanline-bar {
+  animation: scanline 2.5s ease-in-out infinite alternate;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(10, 15, 29, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
