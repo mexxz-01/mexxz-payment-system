@@ -44,7 +44,7 @@ export default function VerifyModal({
     }
 
     setVerifying(true);
-    const result = await verifyUtrWithObserver(utr.trim(), amount, upiId);
+    const result = await verifyUtrWithObserver(utr.trim(), amount, upiId, note, txRef);
     setVerifying(false);
 
     if (result.success) {
