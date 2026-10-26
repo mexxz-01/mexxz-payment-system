@@ -1,25 +1,6 @@
-// Mexxz Payment System - Banking & Direct Settlement Verification Engine
+// Mexxz Payment System - Frontend API Client for YouPI-PG Observer Backend
 
-const LEDGER_KEY = 'mexxz_payment_ledger';
-
-// Helper to get verified ledger from storage
-export function getLedger() {
-  try {
-    const data = localStorage.getItem(LEDGER_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
-}
-
-// Helper to save ledger
-export function saveLedger(ledger) {
-  try {
-    localStorage.setItem(LEDGER_KEY, JSON.stringify(ledger));
-  } catch (e) {
-    console.error('Failed to save ledger', e);
-  }
-}
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Strict UTR Format Validator (NPCI 12-digit RRN)
 export function validateUtrFormat(utr) {
@@ -50,9 +31,7 @@ export function validateUtrFormat(utr) {
     '999999999999',
     '123456789012',
     '012345678901',
-    '987654321098',
-    '121212121212',
-    '123123123123'
+    '987654321098'
   ];
 
   if (blacklisted.includes(cleanUtr)) {
@@ -66,18 +45,11 @@ export function validateUtrFormat(utr) {
 }
 
 /**
- * Verify and register a direct UPI payment using the payer's 12-digit Bank UTR / RRN
- * @param {string} utr - The 12-digit UTR number entered by the payer
- * @param {number|string} expectedAmount - Expected amount in INR
- * @param {string} vpa - Receiver UPI VPA (e.g. mexxz@slc)
- * @param {string} note - Payment purpose / remark
- * @param {string} txRef - Session transaction reference ID
+ * Verify payment with the real YouPI-PG Backend Observer
+ * Checks if the receiving phone has actually caught an incoming bank credit SMS!
  */
 export async function verifyUtrWithObserver(utr, expectedAmount, vpa = 'mexxz@slc', note = '', txRef = '') {
-  // Simulate network verification handshake with receiving bank / NPCI rail
-  await new Promise((res) => setTimeout(res, 900));
-
-  // Step 1: Format validation
+  // Step 1: Client-side format validation
   const formatCheck = validateUtrFormat(utr);
   if (!formatCheck.valid) {
     return {
@@ -88,63 +60,60 @@ export async function verifyUtrWithObserver(utr, expectedAmount, vpa = 'mexxz@sl
   }
 
   const cleanUtr = formatCheck.cleanUtr;
-  const ledger = getLedger();
 
-  // Step 2: Check if this UTR was already registered in the merchant ledger
-  const existingRecord = ledger.find((r) => r.utr === cleanUtr);
+  // Step 2: Query the YouPI-PG Backend Server
+  try {
+    const response = await fetch(`${API_BASE_URL}/payment/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        utr: cleanUtr,
+        amount: expectedAmount ? parseFloat(expectedAmount) : 0,
+        vpa: vpa || 'mexxz@slc',
+        note,
+        orderId: txRef
+      })
+    });
 
-  if (existingRecord) {
-    // If it's already verified, return the verified record
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      return {
+        success: false,
+        code: data.code || 'VERIFICATION_FAILED',
+        message: data.error || 'Payment not detected. No bank notification received for this UTR.'
+      };
+    }
+
     return {
       success: true,
-      code: 'ALREADY_VERIFIED',
-      record: existingRecord,
-      message: 'Payment verified and confirmed from merchant ledger.'
+      code: 'VERIFIED',
+      record: data.record,
+      message: 'Payment confirmed and verified via Bank SMS Observer Mesh!'
+    };
+  } catch (err) {
+    console.error('Failed to connect to Observer backend:', err);
+    return {
+      success: false,
+      code: 'SERVER_OFFLINE',
+      message: 'Could not connect to the Observer server. Please ensure the backend is running at http://localhost:3001.'
     };
   }
-
-  // Step 3: Register and confirm the genuine payment in the merchant ledger
-  const verifiedRecord = {
-    utr: cleanUtr,
-    amount: expectedAmount ? parseFloat(expectedAmount) : 0,
-    vpa: vpa || 'mexxz@slc',
-    note: note || 'Direct UPI Transfer',
-    txRef: txRef || 'MEXXZ-' + Math.floor(100000 + Math.random() * 900000),
-    status: 'VERIFIED_SETTLED',
-    settlementRail: 'NPCI UPI Direct P2B',
-    timestamp: new Date().toISOString()
-  };
-
-  ledger.unshift(verifiedRecord);
-  saveLedger(ledger);
-
-  return {
-    success: true,
-    code: 'VERIFIED',
-    record: verifiedRecord,
-    message: 'Payment successfully confirmed and verified via NPCI direct rail.'
-  };
 }
 
 /**
- * Register an incoming payment in the bank ledger
+ * Check backend observer health & connection status
  */
-export function recordIncomingPayment({ utr, amount, vpa = 'mexxz@slc', note = '', sender = 'UPI Payer' }) {
-  const ledger = getLedger();
-  const existing = ledger.find((r) => r.utr === utr);
-  if (existing) return existing;
-
-  const newRecord = {
-    utr,
-    amount: parseFloat(amount || 0),
-    vpa,
-    note,
-    sender,
-    status: 'VERIFIED_SETTLED',
-    timestamp: new Date().toISOString()
-  };
-
-  ledger.unshift(newRecord);
-  saveLedger(ledger);
-  return newRecord;
+export async function checkObserverHealth() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/health`);
+    if (res.ok) {
+      return await res.json();
+    }
+    return { status: 'OFFLINE' };
+  } catch {
+    return { status: 'OFFLINE' };
+  }
 }
